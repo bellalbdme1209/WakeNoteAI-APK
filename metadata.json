@@ -1,0 +1,14 @@
+{
+  "name": "WakeNoteAI",
+  "description": "Intelligent AI-powered alarm ecosystem featuring voice commands, 'Hello Gemini' wake word activation, and neural text-to-speech feedback. Master your morning with motivational pushes and smart scheduling.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "AI Transcription",
+    "Smart Voice Commands",
+    "Motivational Alarms",
+    "Cloud Sync"
+  ]
+}

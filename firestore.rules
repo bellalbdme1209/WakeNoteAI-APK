@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Collection Matches ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUser(incoming());
+      
+      function isValidUser(data) {
+        let requiredKeys = ['name'];
+        let optionalKeys = ['gender', 'photoURL', 'streak', 'totalAlarmsCompleted'];
+        return data.keys().hasAll(requiredKeys) &&
+               data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+               (!data.keys().hasAny(['gender']) || data.gender in ['male', 'female', 'other']) &&
+               (!data.keys().hasAny(['photoURL']) || (data.photoURL is string && data.photoURL.size() <= 1024)) &&
+               (!data.keys().hasAny(['streak']) || data.streak is number) &&
+               (!data.keys().hasAny(['totalAlarmsCompleted']) || data.totalAlarmsCompleted is number);
+      }
+
+      match /alarms/{alarmId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidAlarm(incoming());
+        allow update: if isOwner(userId) && isValidAlarm(incoming()) && (
+          // Action: Toggle or Edit
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'isEnabled', 'hour', 'minute', 'period', 'label', 'days', 'noteType', 
+            'noteContent', 'audioUrl', 'soundId', 'date'
+          ])
+        );
+        allow delete: if isOwner(userId);
+
+        function isValidAlarm(data) {
+          return data.userId == request.auth.uid &&
+                 data.hour is number && data.hour >= 1 && data.hour <= 12 &&
+                 data.minute is number && data.minute >= 0 && data.minute < 60 &&
+                 data.period in ['AM', 'PM'] &&
+                 data.days is list && data.days.size() <= 7 &&
+                 data.soundId is string && data.soundId.size() <= 50 &&
+                 (!data.keys().hasAny(['label']) || (data.label is string && data.label.size() <= 100)) &&
+                 (!data.keys().hasAny(['noteContent']) || (data.noteContent is string && data.noteContent.size() <= 1000)) &&
+                 (!data.keys().hasAny(['audioUrl']) || (data.audioUrl is string && data.audioUrl.size() <= 1000000)); // Large for base64 if needed, but usually formats are limited
+        }
+      }
+    }
+  }
+}

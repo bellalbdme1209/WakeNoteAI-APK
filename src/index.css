@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Space+Grotesk:wght@300..700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-primary, "Inter"), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: var(--font-secondary, "Playfair Display"), serif;
+  --font-tech: "Space Grotesk", sans-serif;
+  
+  --color-brand-violet: var(--primary-color, #7C5CFF);
+  --color-brand-space: var(--bg-color, #0B0F1A);
+  --color-brand-surface: var(--surface-color, #151B2D);
+  --color-brand-green: var(--accent-color, #2ECC71);
+  --color-brand-warning: #FFB020;
+}
+
+@layer base {
+  :root {
+    --primary-color: #7C5CFF;
+    --bg-color: #0B0F1A;
+    --surface-color: #151B2D;
+    --accent-color: #2ECC71;
+    --font-primary: "Inter";
+  }
+
+  /* Cyberpunk Theme */
+  .theme-cyber {
+    --primary-color: #00F3FF; /* Cyan */
+    --bg-color: #050505;
+    --surface-color: #111111;
+    --accent-color: #FF00E5; /* Pink */
+    --font-primary: "Space Grotesk";
+  }
+
+  /* Editorial Theme */
+  .theme-editorial {
+    --primary-color: #D4AF37; /* Gold */
+    --bg-color: #FDFCF8; /* Cream */
+    --surface-color: #FFFFFF;
+    --accent-color: #2D2D2D; /* Charcoal */
+    --font-primary: "Playfair Display";
+  }
+
+  body {
+    @apply bg-brand-space text-[var(--text-color,white)] font-sans antialiased transition-colors duration-500;
+  }
+  
+  .theme-editorial body {
+    --text-color: #2D2D2D;
+    --primary-color: #D4AF37;
+    --bg-color: #FDFCF8;
+    --surface-color: #FFFFFF;
+    --accent-color: #2D2D2D;
+    --font-primary: "Playfair Display";
+  }
+
+  .theme-cyber body {
+    --primary-color: #00F3FF;
+    --bg-color: #050505;
+    --surface-color: #111111;
+    --accent-color: #FF00E5;
+    --font-primary: "Space Grotesk";
+  }
+
+  body {
+    @apply bg-brand-space text-[var(--text-color,white)] font-sans antialiased transition-all duration-500 overflow-hidden;
+  }
+}
+
+.glass-panel {
+  @apply bg-brand-surface/60 backdrop-blur-xl border border-white/10 shadow-lg shadow-black/20;
+}
+
+.tab-active {
+  @apply text-brand-violet;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Theme application logic helper */
+.font-theme {
+  font-family: var(--font-primary), var(--font-sans);
+}

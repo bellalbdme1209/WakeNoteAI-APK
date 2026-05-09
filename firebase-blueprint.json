@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "photoURL": { "type": "string", "format": "uri" },
+        "streak": { "type": "number" },
+        "totalAlarmsCompleted": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "Alarm": {
+      "title": "Alarm",
+      "description": "Alarm configuration",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "hour": { "type": "number" },
+        "minute": { "type": "number" },
+        "period": { "type": "string", "enum": ["AM", "PM"] },
+        "label": { "type": "string" },
+        "isEnabled": { "type": "boolean" },
+        "days": { "type": "array", "items": { "type": "string" } },
+        "noteType": { "type": "string", "enum": ["text", "voice", "none"] },
+        "noteContent": { "type": "string" },
+        "audioUrl": { "type": "string", "format": "uri" },
+        "soundId": { "type": "string" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["userId", "hour", "minute", "period", "soundId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/users/{userId}/alarms/{alarmId}": {
+      "schema": "Alarm",
+      "description": "User's alarms"
+    }
+  }
+}
