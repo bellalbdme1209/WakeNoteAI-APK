@@ -15,6 +15,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Pillar: Verified Users (Strict mandate for writes)
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -30,31 +35,48 @@ service cloud.firestore {
     // --- Collection Matches ---
 
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow create, update: if isOwner(userId) && isValidUser(incoming());
+      // READ: Isolation (Pillar 6)
+      allow read: if isOwner(userId);
       
+      // WRITE: Strict Validation (Pillar 2) + Verified Identity (Pillar 5)
+      // Allow social logins (google, facebook) which are implicitly verified. 
+      function isSocialOrVerified() {
+        return isSignedIn() && (
+          request.auth.token.email_verified == true || 
+          request.auth.token.firebase.sign_in_provider in ['google.com', 'facebook.com'] ||
+          request.auth.token.firebase.sign_in_provider == 'facebook.com'
+        );
+      }
+
+      allow create: if isOwner(userId) && isSocialOrVerified() && isValidUser(incoming());
+      allow update: if isOwner(userId) && isSocialOrVerified() && isValidUser(incoming()) && (
+        // Action: Update Profile
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'gender', 'photoURL', 'streak', 'totalAlarmsCompleted'])
+      );
+
       function isValidUser(data) {
-        let requiredKeys = ['name'];
-        let optionalKeys = ['gender', 'photoURL', 'streak', 'totalAlarmsCompleted'];
-        return data.keys().hasAll(requiredKeys) &&
+        return data.keys().hasAll(['name']) &&
                data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
                (!data.keys().hasAny(['gender']) || data.gender in ['male', 'female', 'other']) &&
-               (!data.keys().hasAny(['photoURL']) || (data.photoURL is string && data.photoURL.size() <= 1024)) &&
+               (!data.keys().hasAny(['photoURL']) || (data.photoURL is string && data.photoURL.size() <= 10000000)) && // 10MB for base64/assets
                (!data.keys().hasAny(['streak']) || data.streak is number) &&
                (!data.keys().hasAny(['totalAlarmsCompleted']) || data.totalAlarmsCompleted is number);
       }
 
       match /alarms/{alarmId} {
-        allow list, get: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidAlarm(incoming());
-        allow update: if isOwner(userId) && isValidAlarm(incoming()) && (
+        // READ: Secure List Queries (Pillar 8)
+        allow read: if isOwner(userId);
+        
+        // WRITE: Master Gate (Pillar 1)
+        allow create: if isOwner(userId) && isSocialOrVerified() && isValidAlarm(incoming());
+        allow update: if isOwner(userId) && isSocialOrVerified() && isValidAlarm(incoming()) && (
           // Action: Toggle or Edit
           incoming().diff(existing()).affectedKeys().hasOnly([
             'isEnabled', 'hour', 'minute', 'period', 'label', 'days', 'noteType', 
-            'noteContent', 'audioUrl', 'soundId', 'date'
+            'noteContent', 'audioUrl', 'soundId', 'date', 'userId'
           ])
         );
-        allow delete: if isOwner(userId);
+        allow delete: if isOwner(userId) && isSocialOrVerified();
 
         function isValidAlarm(data) {
           return data.userId == request.auth.uid &&
@@ -63,9 +85,11 @@ service cloud.firestore {
                  data.period in ['AM', 'PM'] &&
                  data.days is list && data.days.size() <= 7 &&
                  data.soundId is string && data.soundId.size() <= 50 &&
+                 (!data.keys().hasAny(['isEnabled']) || data.isEnabled is bool) &&
                  (!data.keys().hasAny(['label']) || (data.label is string && data.label.size() <= 100)) &&
                  (!data.keys().hasAny(['noteContent']) || (data.noteContent is string && data.noteContent.size() <= 1000)) &&
-                 (!data.keys().hasAny(['audioUrl']) || (data.audioUrl is string && data.audioUrl.size() <= 1000000)); // Large for base64 if needed, but usually formats are limited
+                 (!data.keys().hasAny(['audioUrl']) || (data.audioUrl is string && data.audioUrl.size() <= 2000000)) && // Large for voice notes
+                 (!data.keys().hasAny(['date']) || (data.date is string && data.date.size() <= 20));
         }
       }
     }
